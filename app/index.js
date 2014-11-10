@@ -13,13 +13,17 @@ module.exports = yeoman.generators.Base.extend({
   initializing: function () {
     this.settings = new Config();
     this.testFramework = this.options['test-framework'] || 'mocha';
+    this.jscsModule = true;
+    this.releaseModule = true;
+    this.istanbulModule = true;
+    this.coverallsModule = true;
   },
 
   prompting: function () {
     var cb = this.async();
     var log = this.log;
 
-    log(yosay('Hello, and welcome to the node-gulp generator. Let\'s be awesome together!'));
+    log(yosay('Hello, and welcome to the node-gulp-sweet generator. Let\'s be awesome together!'));
 
     var prompts = [{
       name: 'name',
@@ -36,29 +40,6 @@ module.exports = yeoman.generators.Base.extend({
           done(input);
         });
       }
-    }, {
-      name: 'description',
-      message: 'Description',
-      default: 'The best module ever.'
-    }, {
-      name: 'homepage',
-      message: 'Homepage'
-    }, {
-      name: 'license',
-      message: 'License',
-      default: 'MIT'
-    }, {
-      name: 'githubUsername',
-      message: 'GitHub username'
-    }, {
-      name: 'authorName',
-      message: 'Author\'s Name'
-    }, {
-      name: 'authorEmail',
-      message: 'Author\'s Email'
-    }, {
-      name: 'authorUrl',
-      message: 'Author\'s Homepage'
     }];
 
     this.currentYear = new Date().getFullYear();
@@ -80,168 +61,22 @@ module.exports = yeoman.generators.Base.extend({
             return g[1].toUpperCase();
           }
       );
-
-      if (props.homepage) {
-        props.homepage = props.homepage.trim();
-      }
-      if (props.license) {
-        props.license = props.license.trim() || 'MIT';
-      }
-      if (props.authorName) {
-        props.authorName = props.authorName.trim();
-      }
-      if (props.authorEmail) {
-        props.authorEmail = props.authorEmail.trim();
-      }
-      if (props.authorUrl) {
-        props.authorUrl = props.authorUrl.trim();
-      }
-
+      
+      props.license = 'MIT';
+      props.authorName = "Andrew Stern";
+      props.authorEmail = "andrew.martin.stern@gmail.com";
+      props.githubUsername = "androidStern";
       this.settings.setMeta(props);
-
-      if (props.githubUsername && props.githubUsername.trim()) {
-        this.repoUrl = 'https://github.com/' + props.githubUsername + '/' + this.slugname;
-      } else {
-        this.repoUrl = 'user/repo';
-        props.githubUsername = 'user';
-      }
-
-      if (!props.homepage) {
-        props.homepage = this.repoUrl;
-      }
-
+      this.repoUrl = 'https://github.com/' + props.githubUsername + '/' + this.slugname;
+      props.homepage = this.repoUrl;
       this.props = props;
-
       cb();
     }.bind(this));
 
-  },
-
-  askForModules: function () {
-    var cb = this.async();
-
-    var prompts = [{
-      type: 'checkbox',
-      name: 'modules',
-      message: 'Which modules would you like to include?',
-      choices: [{
-          value: 'jscsModule',
-          name: 'jscs (JavaScript Code Style checker)',
-          checked: true
-        }, {
-          value: 'releaseModule',
-          name: 'release (Bump npm versions with Gulp)',
-          checked: true
-        }, {
-          value: 'istanbulModule',
-          name: 'istanbul (JS code coverage tool)',
-          checked: true
-        }
-      ]
-    }];
-
-    this.prompt(prompts, function (props) {
-
-      var hasMod = function (mod) {
-        return props.modules.indexOf(mod) !== -1;
-      };
-
-      this.jscsModule = hasMod('jscsModule');
-      this.releaseModule = hasMod('releaseModule');
-      this.istanbulModule = hasMod('istanbulModule');
-      this.coverallsModule = true;
-
-      if (this.istanbulModule) {
-
-        var promptCoveralls = [{
-          type: 'confirm',
-          name: 'coverallsModule',
-          message: 'Would you like add coveralls',
-          default: true
-        }];
-
-        this.prompt(promptCoveralls, function (props) {
-          if (props && props.coverallsModule) {
-            this.coverallsModule = props.coverallsModule;
-          } else {
-            this.coverallsModule = false;
-          }
-          cb();
-
-        }.bind(this));
-
-      } else {
-        cb();
-      }
-
-    }.bind(this));
-
-  },
-
-  askForDependencies: function () {
-    var cb = this.async();
-
-    var prompts = [{
-      type: 'checkbox',
-      name: 'dependencies',
-      message: 'Which dependencies would you like to include?',
-      choices: []
-    }];
-
-    var dependencies = this.settings.getDependencies();
-    dependencies.forEach(function (pkg) {
-      prompts[0].choices.push({
-        value: pkg.name,
-        name: util.format('%s (%s)', pkg.name, pkg.description),
-        checked: true
-      });
-    });
-
-    this.prompt(prompts, function (props) {
-
-      var hasMod = function (mod) {
-        return props.dependencies.indexOf(mod) !== -1;
-      };
-
-      this.usedDependencies = {};
-      dependencies.forEach(function (dep) {
-        if (hasMod(dep.name)) {
-          this.usedDependencies[dep.name] = 'latest';
-        }
-      }.bind(this));
-
-      cb();
-
-    }.bind(this));
-
-  },
-
-  getLatestVersions: function () {
-    var cb = this.async();
-    var count = Object.keys(this.usedDependencies).length;
-
-    if (count === 0) {
-      return cb();
-    }
-
-    for (var packageName in this.usedDependencies) {
-      npmLatest(packageName, {timeout: 1900}, function (err, result) {
-        if (!err && result.name && result.version) {
-          this.usedDependencies[result.name] = result.version;
-        }
-        if (!--count) {
-          cb();
-        }
-      }.bind(this));
-    }
   },
 
   dependency: function dependency() {
     this.dependencies = '';
-    for (var name in this.usedDependencies) {
-      var version = this.usedDependencies[name];
-      this.dependencies += util.format('\n    "%s": "%s",', name, version);
-    }
     if (this.dependencies.length > 0) {
       this.dependencies = this.dependencies.replace('\n', '');
       this.dependencies = this.dependencies.substring(0, this.dependencies.length - 1);
@@ -272,6 +107,8 @@ module.exports = yeoman.generators.Base.extend({
 
     this.mkdir('example');
     this.template('example/simple.js', 'example/simple.js');
+
+    this.mkdir('build');
   },
 
   install: function () {
